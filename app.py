@@ -1,21 +1,45 @@
 from flask import Flask, request, redirect, render_template_string
-import csv
 from datetime import datetime
 import os
 import requests
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
 # Configuratie
 INSTAGRAM_USERNAME = "richvrb"
 REDIRECT_URL = "https://www.nu.nl"
-CSV_FILE = "tracking_data.csv"
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# Maak CSV aan als deze niet bestaat
-if not os.path.exists(CSV_FILE):
-    with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(['Timestamp', 'IP Address', 'Country', 'City', 'Browser', 'Device', 'Referrer'])
+# Database connectie
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
+
+# Maak database tabel aan als deze niet bestaat
+def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS tracking_data (
+            id SERIAL PRIMARY KEY,
+            timestamp TIMESTAMP NOT NULL,
+            ip_address VARCHAR(45) NOT NULL,
+            country VARCHAR(100),
+            city VARCHAR(100),
+            browser TEXT,
+            device VARCHAR(50),
+            referrer TEXT
+        )
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# Initialiseer database bij opstarten
+if DATABASE_URL:
+    init_db()
 
 def get_location(ip):
     """Haal locatie op basis van IP adres"""
@@ -52,13 +76,19 @@ def track():
     else:
         device = 'Desktop'
 
-    # Sla data op in CSV
+    # Sla data op in database
     try:
-        with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([timestamp, ip, country, city, browser, device, referrer])
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'INSERT INTO tracking_data (timestamp, ip_address, country, city, browser, device, referrer) VALUES (%s, %s, %s, %s, %s, %s, %s)',
+            (timestamp, ip, country, city, browser, device, referrer)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
     except Exception as e:
-        print(f"Error writing to CSV: {e}")
+        print(f"Error writing to database: {e}")
 
     # Redirect naar Instagram
     return redirect(REDIRECT_URL, code=302)
@@ -67,23 +97,25 @@ def track():
 def dashboard():
     """Dashboard om tracking data te bekijken"""
     try:
-        with open(CSV_FILE, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            data = list(reader)
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM tracking_data ORDER BY timestamp DESC')
+        data = cur.fetchall()
+        cur.close()
+        conn.close()
     except:
-        data = [['Timestamp', 'IP Address', 'Country', 'City', 'Browser', 'Device', 'Referrer']]
+        data = []
 
     # Bereken statistieken
-    total_clicks = len(data) - 1  # -1 voor header
+    total_clicks = len(data)
     countries = {}
     devices = {}
 
-    for row in data[1:]:  # Skip header
-        if len(row) >= 6:
-            country = row[2]
-            device = row[5]
-            countries[country] = countries.get(country, 0) + 1
-            devices[device] = devices.get(device, 0) + 1
+    for row in data:
+        country = row['country']
+        device = row['device']
+        countries[country] = countries.get(country, 0) + 1
+        devices[device] = devices.get(device, 0) + 1
 
     html = f"""
     <!DOCTYPE html>
@@ -205,7 +237,7 @@ def dashboard():
                     <th>Device</th>
                     <th>Referrer</th>
                 </tr>
-                {''.join([f'<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[5]}</td><td>{row[6][:50]}...</td></tr>' for row in reversed(data[1:])])}
+                {''.join([f"<tr><td>{row['timestamp']}</td><td>{row['ip_address']}</td><td>{row['country']}</td><td>{row['city']}</td><td>{row['device']}</td><td>{row['referrer'][:50]}...</td></tr>" for row in data])}
             </table>
         </div>
     </body>
