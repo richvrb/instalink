@@ -13,20 +13,14 @@ REDIRECT_URL = "https://www.nu.nl"
 
 # Database connectie
 def get_db_connection():
-    # Probeer eerst DATABASE_URL, anders bouw uit Railway variabelen
-    database_url = os.environ.get('DATABASE_URL')
-
-    if database_url:
-        conn = psycopg2.connect(database_url)
-    else:
-        # Gebruik Railway's individuele PostgreSQL variabelen
-        conn = psycopg2.connect(
-            host=os.environ.get('PGHOST'),
-            database=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD'),
-            port=5432
-        )
+    # Gebruik Railway's individuele PostgreSQL variabelen (niet DATABASE_URL omdat die templates bevat)
+    conn = psycopg2.connect(
+        host=os.environ.get('PGHOST'),
+        database=os.environ.get('POSTGRES_DB'),
+        user=os.environ.get('POSTGRES_USER'),
+        password=os.environ.get('POSTGRES_PASSWORD'),
+        port=5432
+    )
     return conn
 
 # Maak database tabel aan als deze niet bestaat
