@@ -24,7 +24,7 @@ def get_db_connection():
             host=os.environ.get('RAILWAY_PRIVATE_DOMAIN'),
             database=os.environ.get('PGDATABASE'),
             user=os.environ.get('PGUSER'),
-            password=os.environ.get('POSTGRES_PASSWORD'),
+            password=os.environ.get('PGPASSWORD'),
             port=5432
         )
     return conn
