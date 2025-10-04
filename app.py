@@ -103,7 +103,8 @@ def dashboard():
         data = cur.fetchall()
         cur.close()
         conn.close()
-    except:
+    except Exception as e:
+        print(f"Database error: {e}")
         data = []
 
     # Bereken statistieken
