@@ -10,11 +10,23 @@ app = Flask(__name__)
 # Configuratie
 INSTAGRAM_USERNAME = "richvrb"
 REDIRECT_URL = "https://www.nu.nl"
-DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # Database connectie
 def get_db_connection():
-    conn = psycopg2.connect(DATABASE_URL)
+    # Probeer eerst DATABASE_URL, anders bouw uit Railway variabelen
+    database_url = os.environ.get('DATABASE_URL')
+
+    if database_url:
+        conn = psycopg2.connect(database_url)
+    else:
+        # Gebruik Railway's individuele PostgreSQL variabelen
+        conn = psycopg2.connect(
+            host=os.environ.get('RAILWAY_PRIVATE_DOMAIN'),
+            database=os.environ.get('PGDATABASE'),
+            user=os.environ.get('PGUSER'),
+            password=os.environ.get('POSTGRES_PASSWORD'),
+            port=5432
+        )
     return conn
 
 # Maak database tabel aan als deze niet bestaat
@@ -38,8 +50,10 @@ def init_db():
     conn.close()
 
 # Initialiseer database bij opstarten
-if DATABASE_URL:
+try:
     init_db()
+except Exception as e:
+    print(f"Database initialization error: {e}")
 
 def get_location(ip):
     """Haal locatie op basis van IP adres"""
