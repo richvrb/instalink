@@ -21,10 +21,10 @@ def get_db_connection():
     else:
         # Gebruik Railway's individuele PostgreSQL variabelen
         conn = psycopg2.connect(
-            host=os.environ.get('RAILWAY_PRIVATE_DOMAIN'),
-            database=os.environ.get('PGDATABASE'),
-            user=os.environ.get('PGUSER'),
-            password=os.environ.get('PGPASSWORD'),
+            host=os.environ.get('PGHOST'),
+            database=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD'),
             port=5432
         )
     return conn
