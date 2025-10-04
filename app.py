@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # Configuratie
 INSTAGRAM_USERNAME = "richvrb"
-REDIRECT_URL = f"https://www.instagram.com/{INSTAGRAM_USERNAME}"
+REDIRECT_URL = "https://www.nu.nl"
 CSV_FILE = "tracking_data.csv"
 
 # Maak CSV aan als deze niet bestaat
